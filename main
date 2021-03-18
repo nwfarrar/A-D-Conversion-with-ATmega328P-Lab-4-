@@ -1,0 +1,126 @@
+/*
+ * Lab 4.cpp
+ *
+ * Created: 2/10/2020 1:08:11 PM
+ * Author : Nathan Farrar
+ */ 
+
+//** GLOBAL VARIABLES **/
+long freqclk = 16000000; // clock frequency in Hz
+volatile int count_door1 = 0;
+volatile int count_door2 = 0;
+char flag1 = 0;
+char flag2 = 0;
+char sensorvalue = 0; // value read from analog sensor (0-1023)
+
+
+//** FUNCTION DECLARATIONS **//
+void wait(volatile int N);  // Note that variables in the delay loops are declared as volatile.  If not, the compiler will likely
+// see these as not necessary since they are not used for any important tasks or I/O and will eliminate the loops.  In fact, if
+// the simulator is used without these being declared volatile, then the loops will be ignored all together in the simulation,
+// and the cycle counter will not grow correctly.
+void delay_1_msec_raw_count();
+
+
+#include <avr/io.h>
+
+
+//============================================================
+// MAIN
+//============================================================
+
+int main(void)
+{
+	DDRB = 0b00111111; //Ports B0 through B5 are set as outputs.
+	DDRC = 0b00000000; //Port C0 through C6 is set as an input.
+	PORTB = PORTB | 0b11111111; //Setting PORTB0-PORTBT to off (active-low)
+	PRR = 0x00;  // clear Power Reduction ADC bit (0) in PRR register
+	ADCSRA = 1<<ADEN | 1<<ADPS2 | 1<<ADPS1 | 1<<ADPS0;  // 0x87 // 0b10000111 // Set ADC Enable bit (7) in ADCSRA register, and set ADC prescaler to 128 (bits 2-0 of ADCSRA = ADPS2-ADPS0 = 111)
+	ADMUX = 0b01100000; // bit 6-7 AVCC with external capacitor at AREF pin
+						//bit 5 left justification
+	
+	
+
+//============================================================
+// PROGRAM LOOP
+//============================================================
+  
+    while (1) 
+    {
+		// Read analog input
+		ADCSRA |= (1<<ADSC); // Start conversion
+		while ((ADCSRA & (1<<ADIF)) ==0); // wait for conversion to finish
+		
+		sensorvalue = ADCH; // Keep high byte of 10-bit result (throw away lowest two bits)
+		
+		PORTB = PORTB | 0b11111111; // PB1-5 lights reset to off
+			
+		
+		if(sensorvalue <= 51) //0b00110010 light negative green
+		{
+			PORTB = 0b11111101; // turns on negative green
+		}
+		
+		else if(sensorvalue <= 102) // 0b01100100 negative yellow
+		{
+			PORTB = 0b11111011; // turns on light
+		}
+		
+		else if(sensorvalue <= 153) // 0b10010110 red
+		{
+			PORTB = 0b11110111; // turns on light
+		}
+		
+		else if(sensorvalue <= 204) // 0b11001000 positive yellow
+		{
+			PORTB = 0b11101111; // turns on light
+		}
+		
+		else //if(sensorvalue <=256) // 0b11111111 positive green
+		{
+			PORTB = 0b11011111; // turns on light
+		}
+		
+	}
+
+}
+
+
+
+//=========================================
+// S U B R O U T I N E S
+//=========================================
+
+void wait(volatile int N) {
+	//*** wait ***
+		
+	/* This subroutine creates a delay of N msec by calling another function.
+			Inputs: N = number of msec for the delay (N is int, so can be up to 65,536 msec)
+			Outputs: None
+			
+		Why is N a volatile variable? Some C compilers try to optimize the code and may eliminate code that appears to do nothing.  A time-killing 
+		loop is is one of those code blocks that could be removed during compile.  Using a nonvolatile variable in the function tells the compiler not 
+		remove it.
+	*/
+	while (N>1) {  // This loop creates an N msec delay
+		N=N-1;
+		delay_1_msec_raw_count();
+	}
+} // end wait()
+
+void delay_1_msec_raw_count() {
+    //*** delay N ms **
+    /* This subroutine creates a delay of N msec by using a raw time-killing count.
+			Inputs: None
+			Outputs: None
+	*/
+	volatile int count = (freqclk/1000-28)/4; // each cycle takes 4 clock cycles, so count is the number of cycles needed to create a 1 msec delay.
+									// 28 is the approximate number of other clock cycles used in the subroutine
+	while (count > 1) {  // This loop is expected to create a 1 msec delay, but it is in fact much longer.  Because of the size of the variables,
+			// there is a lot more that needs to be done each cycle so the loop takes much longer than 1 msec to execute. To know exact time for each 
+			// instruction, use assembly language instead of C. (Or look at the disassembly code file and count instructions.)
+			count--; // decrement count
+	}
+	
+		
+} // end delay_1_msec_raw_count()
