@@ -1,0 +1,2 @@
+# A-D-Conversion-with-ATmega328P-Lab-4-
+In this lab you will create a circuit that can be used to control the speed of a DC motor (but we will not connect the motor in this lab) in five discrete steps: forward and backward slow, forward and backward fast, and stopped. The purpose of this lab is to read an analog sensor that will eventually be used to manually set the motor speed. You will use LEDs to indicate the speed setting of the motor.
